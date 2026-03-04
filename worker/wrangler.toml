@@ -1,0 +1,28 @@
+name = "acacia-email-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+account_id = "4f9dc7501dbcf08d342d1ac7637ef1fc"
+
+[vars]
+FRONTEND_URL = "https://email.acacia-education.com"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "acacia-email-db"
+database_id = "63302680-c7ae-4c68-bedc-7412a3191dfa"
+
+# R2 Bucket binding
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "acacia-emails"
+
+# Secrets (set via wrangler secret put):
+# GEMINI_API_KEY
+# RESEND_API_KEY
+# INTERNAL_API_KEY
+# BETTER_AUTH_SECRET
+
+[dev]
+port = 8787

@@ -1,0 +1,24 @@
+{
+  "name": "acacia-email-helper",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "worker",
+    "email-worker",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm run dev:worker & npm run dev:frontend",
+    "dev:worker": "npm run dev --workspace=worker",
+    "dev:email": "npm run dev --workspace=email-worker",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "build": "npm run build --workspaces --if-present",
+    "deploy": "npm run deploy --workspace=worker && npm run deploy --workspace=email-worker",
+    "db:generate": "npm run db:generate --workspace=worker",
+    "db:migrate": "npm run db:migrate --workspace=worker",
+    "db:migrate:remote": "npm run db:migrate:remote --workspace=worker"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

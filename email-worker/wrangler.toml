@@ -1,0 +1,14 @@
+name = "acacia-email-worker"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+account_id = "4f9dc7501dbcf08d342d1ac7637ef1fc"
+
+[vars]
+API_URL = "https://acacia-email-api.workers.dev"
+INBOUND_EMAIL = "contact@acacia-education.com"
+
+# Secrets (set via wrangler secret put):
+# INTERNAL_API_KEY
+
+# Cloudflare Email Routing sends emails to this worker via the email event
