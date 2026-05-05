@@ -5,6 +5,9 @@ import { createAuth, isEmailAllowed } from "./lib/auth";
 import { createPrismaClient } from "./lib/db";
 import { Env, Variables } from "./types";
 import adminRoutes from "./routes/admin";
+import internalRoutes from "./routes/internal";
+import emailRoutes from "./routes/emails";
+import configRoutes from "./routes/config";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -32,7 +35,7 @@ app.use("*", async (c, next) => {
   await next();
 });
 
-// Guard magic link requests against the allowlist before better-auth processes them
+// Guard magic link against the allowlist before better-auth processes it
 app.use("/api/auth/sign-in/magic-link", async (c, next) => {
   if (c.req.method === "POST") {
     const body = await c.req.raw
@@ -50,7 +53,6 @@ app.use("/api/auth/sign-in/magic-link", async (c, next) => {
   await next();
 });
 
-// Better Auth handles all /api/auth/* routes
 app.on(["POST", "GET", "OPTIONS"], "/api/auth/*", (c) => {
   const auth = c.get("auth");
   return auth.handler(c.req.raw);
@@ -58,11 +60,9 @@ app.on(["POST", "GET", "OPTIONS"], "/api/auth/*", (c) => {
 
 app.get("/health", (c) => c.json({ status: "ok" }));
 
+app.route("/api/internal", internalRoutes);
+app.route("/api/emails", emailRoutes);
+app.route("/api/config", configRoutes);
 app.route("/api/admin", adminRoutes);
-
-// Routes added in upcoming tasks:
-// app.route("/api/internal", internalRoutes);  // Task 4
-// app.route("/api/emails", emailRoutes);        // Task 6
-// app.route("/api/config", configRoutes);       // Task 6
 
 export default app;

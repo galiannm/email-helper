@@ -25,8 +25,6 @@ export async function isEmailAllowed(email: string, env: Env): Promise<boolean> 
 }
 
 export function createAuth(env: Env) {
-  const resend = new Resend(env.RESEND_API_KEY);
-
   return betterAuth({
     database: {
       dialect: new D1Dialect({ database: env.DB }),
@@ -41,6 +39,7 @@ export function createAuth(env: Env) {
           if (!allowed) {
             throw new Error("This email is not authorized to access the platform.");
           }
+          const resend = new Resend(env.RESEND_API_KEY);
           try {
             await resend.emails.send({
               from: "Acacia Education <noreply@admin.acacia-education.com>",
