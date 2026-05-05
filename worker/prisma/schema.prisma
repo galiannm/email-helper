@@ -1,0 +1,152 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+  output          = "../../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// Better Auth tables (lowercase names required by better-auth)
+model user {
+  id            String    @id
+  name          String?
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      session[]
+  accounts      account[]
+}
+
+model session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model AllowedEmail {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  role      String   @default("normal")
+  addedBy   String
+  createdAt DateTime @default(now())
+}
+
+// Config tables — seeded from spreadsheet, editable via UI
+model Director {
+  id          String       @id  // e.g. SATHORN, SUKHUMVIT, HANOI_TAYHO, HANOI_LONGBIEN, PHNOM_PENH, DEFAULT
+  name        String
+  email       String
+  schoolName  String
+  signatureEn String?
+  signatureFr String?
+  updatedAt   DateTime     @updatedAt
+  drafts      EmailDraft[]
+}
+
+model Section {
+  code       String   @id  // EXPLORERS | ADVENTURERS | TRAVELERS | GLOBETROTTERS
+  nameEn     String
+  ageRangeEn String
+  nameFr     String
+  ageRangeFr String
+  updatedAt  DateTime @updatedAt
+}
+
+model Template {
+  id        String   @id @default(uuid())
+  campus    String   // bangkok | hanoi | phnomPenh
+  part      String   // greeting | childWelcome | programDescription | ...
+  textEn    String
+  textFr    String
+  updatedAt DateTime @updatedAt
+
+  @@unique([campus, part])
+}
+
+model Document {
+  id          String   @id @default(uuid())
+  name        String
+  campus      String?  // null = applies to all campuses
+  fileKey     String
+  fileName    String
+  contentType String
+  uploadedAt  DateTime @default(now())
+  uploadedBy  String
+}
+
+// Email pipeline
+model IncomingEmail {
+  id            String         @id @default(uuid())
+  fromAddress   String
+  toAddress     String
+  subject       String
+  rawText       String
+  rawEmailKey   String?
+  receivedAt    DateTime       @default(now())
+  status        String         @default("new")  // new | processing | ready | sent | error
+  errorMessage  String?
+  extractedInfo ExtractedInfo?
+  draft         EmailDraft?
+}
+
+model ExtractedInfo {
+  id               String        @id @default(uuid())
+  emailId          String        @unique
+  email            IncomingEmail @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  parentName       String?
+  childName        String?
+  childAge         String?
+  detectedLanguage String?       // en | fr
+  detectedCampus   String?       // campus code or UNKNOWN
+  sectionCode      String?
+  createdAt        DateTime      @default(now())
+}
+
+model EmailDraft {
+  id                 String        @id @default(uuid())
+  emailId            String        @unique
+  email              IncomingEmail @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  directorCampusCode String
+  director           Director      @relation(fields: [directorCampusCode], references: [id])
+  draftText          String
+  createdAt          DateTime      @default(now())
+  editedAt           DateTime?
+  sentAt             DateTime?
+}

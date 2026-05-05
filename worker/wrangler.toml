@@ -6,6 +6,7 @@ account_id = "4f9dc7501dbcf08d342d1ac7637ef1fc"
 
 [vars]
 FRONTEND_URL = "https://email.acacia-education.com"
+ROOT_USERS = "galianmanon@gmail.com,christophe.galian@gmail.com"
 
 # D1 Database binding
 [[d1_databases]]
