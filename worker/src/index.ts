@@ -8,6 +8,8 @@ import adminRoutes from "./routes/admin";
 import internalRoutes from "./routes/internal";
 import emailRoutes from "./routes/emails";
 import configRoutes from "./routes/config";
+import { pollGraphInbox, getPollStatus } from "./services/graph-poller";
+import { authMiddleware } from "./middleware/auth";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -60,9 +62,30 @@ app.on(["POST", "GET", "OPTIONS"], "/api/auth/*", (c) => {
 
 app.get("/health", (c) => c.json({ status: "ok" }));
 
+// Manual poll trigger — internal key auth
+app.post("/api/internal/poll", async (c) => {
+  const apiKey = c.req.header("X-Internal-API-Key");
+  if (c.env.INTERNAL_API_KEY && apiKey !== c.env.INTERNAL_API_KEY) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  c.executionCtx.waitUntil(pollGraphInbox(c.env));
+  return c.json({ success: true, message: "Poll triggered" });
+});
+
+// Poll status — requires login (useful for the UI)
+app.get("/api/poll/status", authMiddleware, async (c) => {
+  const status = await getPollStatus(c.env.DB);
+  return c.json(status ?? { status: "never_run", processed: 0, updatedAt: null });
+});
+
 app.route("/api/internal", internalRoutes);
 app.route("/api/emails", emailRoutes);
 app.route("/api/config", configRoutes);
 app.route("/api/admin", adminRoutes);
 
-export default app;
+// ── Cloudflare Workers scheduled handler (cron) ───────────────────────────────
+const scheduled: ExportedHandlerScheduledHandler<Env> = async (_event, env, ctx) => {
+  ctx.waitUntil(pollGraphInbox(env));
+};
+
+export default { fetch: app.fetch, scheduled };

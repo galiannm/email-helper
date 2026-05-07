@@ -70,10 +70,12 @@ model AllowedEmail {
 
 // Config tables — seeded from spreadsheet, editable via UI
 model Director {
-  id          String       @id  // e.g. SATHORN, SUKHUMVIT, HANOI_TAYHO, HANOI_LONGBIEN, PHNOM_PENH, DEFAULT
+  id          String       @id @default(uuid())
   name        String
   email       String
   schoolName  String
+  location    String       // bangkok | hanoi | phnomPenh
+  section     String       @default("both")  // french | international | both
   signatureEn String?
   signatureFr String?
   updatedAt   DateTime     @updatedAt
@@ -131,6 +133,8 @@ model ExtractedInfo {
   emailId          String        @unique
   email            IncomingEmail @relation(fields: [emailId], references: [id], onDelete: Cascade)
   parentName       String?
+  parentEmail      String?       // from "Email address" form field — the real reply-to address
+  cursus           String?       // e.g. "French Section", "International Section"
   childName        String?
   childAge         String?
   detectedLanguage String?       // en | fr

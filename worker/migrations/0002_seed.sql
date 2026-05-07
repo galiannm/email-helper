@@ -38,8 +38,8 @@ INSERT INTO "Template" ("id", "campus", "part", "textEn", "textFr", "updatedAt")
    CURRENT_TIMESTAMP),
 
   ('tmpl-bkk-childWelcome', 'bangkok', 'childWelcome',
-   'We would be happy to welcome {child_name} at Acacia in the {section_name} ({age_range}).',
-   'Nous serions ravis d''accueillir {child_name} à Acacia dans la section {section_name} ({age_range}).',
+   'We would be happy to welcome {child_name} at Acacia in the {section_name}.',
+   'Nous serions ravis d''accueillir {child_name} à Acacia dans la section {section_name}.',
    CURRENT_TIMESTAMP),
 
   ('tmpl-bkk-programDescription', 'bangkok', 'programDescription',
@@ -95,8 +95,8 @@ INSERT INTO "Template" ("id", "campus", "part", "textEn", "textFr", "updatedAt")
    CURRENT_TIMESTAMP),
 
   ('tmpl-han-childWelcome', 'hanoi', 'childWelcome',
-   'At {age}, {child_name} would join our {section_name} class ({age_range}).',
-   'À {age}, {child_name} intégrerait notre section {section_name} ({age_range}).',
+   'At {age}, {child_name} would join our {section_name} class.',
+   'À {age}, {child_name} intégrerait notre section {section_name}.',
    CURRENT_TIMESTAMP),
 
   ('tmpl-han-programDescription', 'hanoi', 'programDescription',
@@ -127,8 +127,8 @@ INSERT INTO "Template" ("id", "campus", "part", "textEn", "textFr", "updatedAt")
    CURRENT_TIMESTAMP),
 
   ('tmpl-pp-childWelcome', 'phnomPenh', 'childWelcome',
-   'At {age}, {child_name} would join the {section_name} ({age_range}). Like all our sections, this program offers alternating immersion in French and English, with two teachers: one French-speaking and one English-speaking.',
-   'À {age}, {child_name} intégrerait la section {section_name} ({age_range}). Comme pour toutes nos sections, ce programme offre une immersion en alternance en français et en anglais, avec deux enseignants : un francophone et un anglophone.',
+   'At {age}, {child_name} would join the {section_name}. Like all our sections, this program offers alternating immersion in French and English, with two teachers: one French-speaking and one English-speaking.',
+   'À {age}, {child_name} intégrerait la section {section_name}. Comme pour toutes nos sections, ce programme offre une immersion en alternance en français et en anglais, avec deux enseignants : un francophone et un anglophone.',
    CURRENT_TIMESTAMP),
 
   ('tmpl-pp-aefeHighlight', 'phnomPenh', 'aefeHighlight',

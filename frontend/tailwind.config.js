@@ -10,11 +10,15 @@ export default {
         acacia: {
           50: '#fef7ed',
           100: '#fdecd6',
+          200: '#fad5ac',
+          300: '#f7b878',
+          400: '#faa338',
+          500: '#f58b1f',
+          600: '#e67115',
+          700: '#bf5614',
+          800: '#984418',
           900: '#7b3a17',
-          yellow: {
-            highlight: '#fff8e1',
-            text: '#d68a2d',
-          },
+
           blue: {
             highlight: '#e1eff6',
             text: '#5ba2c4',
@@ -37,6 +41,9 @@ export default {
             text: '#ae7eab',
           },
         },
+      },
+      screens: {
+        'xm': '880px',
       },
       fontFamily: {
         mali: ['Mali', 'cursive'],

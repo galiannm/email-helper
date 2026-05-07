@@ -126,15 +126,18 @@ emails.post("/:id/send", async (c) => {
     attachments.push({ filename: doc.fileName, content: base64, contentType: doc.contentType });
   }
 
-  const parentName = extractedInfo?.parentName ?? "the parent";
+  const parentName  = extractedInfo?.parentName  ?? "the parent";
+  // Use the extracted parent email (from the form field) as the real reply-to address.
+  // email.fromAddress is no-reply@acacia-education.com — not useful for replies.
+  const replyToAddr = extractedInfo?.parentEmail ?? email.fromAddress;
   const resend = new Resend(c.env.RESEND_API_KEY);
 
   const { error } = await resend.emails.send({
     from: "Acacia Email Helper <noreply@admin.acacia-education.com>",
     to: director.email,
-    reply_to: email.fromAddress,
+    reply_to: replyToAddr,
     subject: `[Action needed] New inquiry from ${parentName} — draft reply inside`,
-    text: buildDirectorEmail(email.fromAddress, email.subject, email.rawText, draft.draftText, parentName),
+    text: buildDirectorEmail(replyToAddr, email.subject, email.rawText, draft.draftText, parentName),
     attachments,
   });
 

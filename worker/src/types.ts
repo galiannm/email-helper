@@ -28,6 +28,11 @@ export interface Env {
   FRONTEND_URL: string;
   INTERNAL_API_KEY?: string;
   ROOT_USERS: string;
+  // Microsoft Graph — set via wrangler secret put
+  GRAPH_TENANT_ID?: string;
+  GRAPH_CLIENT_ID?: string;
+  GRAPH_CLIENT_SECRET?: string;
+  GRAPH_MAILBOX?: string;
 }
 
 export interface Variables {

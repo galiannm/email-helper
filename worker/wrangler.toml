@@ -24,6 +24,13 @@ bucket_name = "acacia-emails"
 # RESEND_API_KEY
 # INTERNAL_API_KEY
 # BETTER_AUTH_SECRET
+# GRAPH_TENANT_ID
+# GRAPH_CLIENT_ID
+# GRAPH_CLIENT_SECRET
+# GRAPH_MAILBOX   (e.g. contact@acacia-education.com)
+
+[triggers]
+crons = ["*/15 * * * *"]
 
 [dev]
 port = 8787

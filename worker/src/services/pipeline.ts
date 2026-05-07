@@ -1,43 +1,45 @@
 import { createPrismaClient } from "../lib/db";
-import { Env, CAMPUS_REGION } from "../types";
+import { Env } from "../types";
 import { extractEmailInfo, EmailExtraction } from "./gemini";
 
-// ── Routing ───────────────────────────────────────────────────────────────────
+// ── Routing helpers ───────────────────────────────────────────────────────────
 
-function mapToCampusCode(ex: EmailExtraction): string {
-  const { city, campusPreference } = ex;
-  if (city === "PhnomPenh") return "PHNOM_PENH";
-  if (city === "Hanoi") {
-    if (campusPreference === "TayHo") return "HANOI_TAYHO";
-    if (campusPreference === "LongBien") return "HANOI_LONGBIEN";
-    return "HANOI_UNSPECIFIED";
+function cityToLocation(city: EmailExtraction["city"]): string {
+  switch (city) {
+    case "Bangkok":   return "bangkok";
+    case "Hanoi":     return "hanoi";
+    case "PhnomPenh": return "phnomPenh";
+    default:          return "bangkok";
   }
-  if (city === "Bangkok") {
-    if (campusPreference === "Sathorn") return "SATHORN";
-    if (campusPreference === "Sukhumvit") return "SUKHUMVIT";
-    return "BANGKOK_UNSPECIFIED";
-  }
-  return "UNKNOWN";
 }
 
-function routeToDirector(campusCode: string, lang: "en" | "fr"): string {
-  switch (campusCode) {
-    case "SATHORN":            return "SATHORN";
-    case "SUKHUMVIT":          return "SUKHUMVIT";
-    case "HANOI_TAYHO":        return "HANOI_TAYHO";
-    case "HANOI_LONGBIEN":     return "HANOI_LONGBIEN";
-    case "PHNOM_PENH":         return "PHNOM_PENH";
-    case "HANOI_UNSPECIFIED":  return "HANOI_TAYHO";
-    case "BANGKOK_UNSPECIFIED":
-    case "UNKNOWN":
-    default:
-      return lang === "fr" ? "SATHORN" : "SUKHUMVIT";
+function cursusToSection(cursus: string | null): "french" | "international" {
+  if (!cursus) return "french";
+  const l = cursus.toLowerCase();
+  if (l.includes("french") || l.includes("français") || l.includes("francais") || l.includes("bilingue")) {
+    return "french";
   }
+  return "international";
+}
+
+// Still useful for saving detectedCampus (informational) and {campus_name} variable
+function campusNameFromPref(city: string, campusPreference: string): string {
+  if (city === "Bangkok") {
+    if (campusPreference === "Sathorn")   return "Sathorn";
+    if (campusPreference === "Sukhumvit") return "Sukhumvit";
+  }
+  if (city === "Hanoi") {
+    if (campusPreference === "TayHo")   return "Tay Ho";
+    if (campusPreference === "LongBien") return "Long Bien";
+    return "Hanoi";
+  }
+  if (city === "PhnomPenh") return "Phnom Penh";
+  return "[Campus]";
 }
 
 function mapAgeToSection(ageInMonths: number | null): string | null {
   if (ageInMonths === null) return null;
-  if (ageInMonths < 18) return null;         // Too young (handled separately)
+  if (ageInMonths < 18) return null;
   if (ageInMonths < 36) return "EXPLORERS";
   if (ageInMonths < 48) return "ADVENTURERS";
   if (ageInMonths < 60) return "TRAVELERS";
@@ -47,9 +49,16 @@ function mapAgeToSection(ageInMonths: number | null): string | null {
 
 // ── Template assembly ─────────────────────────────────────────────────────────
 
-type Template = { part: string; textEn: string; textFr: string };
-type Section  = { nameEn: string; ageRangeEn: string; nameFr: string; ageRangeFr: string };
-type Director = { id: string; name: string; signatureEn: string | null; signatureFr: string | null };
+type Template  = { part: string; textEn: string; textFr: string };
+type AgeSection = { nameEn: string; ageRangeEn: string; nameFr: string; ageRangeFr: string };
+type Director  = {
+  id: string;
+  name: string;
+  location: string;
+  section: string;
+  signatureEn: string | null;
+  signatureFr: string | null;
+};
 
 function getPart(templates: Template[], part: string, lang: "en" | "fr"): string {
   const t = templates.find((t) => t.part === part);
@@ -61,53 +70,47 @@ function fillVars(text: string, vars: Record<string, string>): string {
   return text.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? `{${key}}`);
 }
 
-function campusLabel(campusCode: string): string {
-  const labels: Record<string, string> = {
-    SATHORN: "Sathorn",
-    SUKHUMVIT: "Sukhumvit",
-    HANOI_TAYHO: "Tay Ho",
-    HANOI_LONGBIEN: "Long Bien",
-    PHNOM_PENH: "Phnom Penh",
-  };
-  return labels[campusCode] ?? "[Campus]";
-}
-
 function assembleDraft(
   templates: Template[],
-  section: Section | null,
+  ageSection: AgeSection | null,
   director: Director,
   ex: EmailExtraction,
-  campusCode: string
+  campusName: string,
 ): string {
-  const lang = ex.detectedLanguage;
-  const campus = CAMPUS_REGION[director.id] ?? "bangkok";
-  const isTooYoung =
-    !section && ex.ageInMonths !== null && ex.ageInMonths < 18;
+  // Language comes from the parent's email language, never from the section/cursus
+  const lang   = ex.detectedLanguage;
+  const campus = director.location;          // "bangkok" | "hanoi" | "phnomPenh"
+  const dirSec = director.section;           // "french" | "international" | "both"
+  const isTooYoung = !ageSection && ex.ageInMonths !== null && ex.ageInMonths < 18;
 
   const vars: Record<string, string> = {
-    parent_name:  ex.parentName  ?? "[Parent Name]",
-    child_name:   ex.childName   ?? "[Child Name]",
-    age:          ex.childAge    ?? "[Age]",
-    section_name: section ? (lang === "fr" ? section.nameFr    : section.nameEn)      : "[Section]",
-    age_range:    section ? (lang === "fr" ? section.ageRangeFr : section.ageRangeEn) : "[Age Range]",
-    campus_name:  campusLabel(campusCode),
+    parent_name:  ex.parentName ?? "[Parent Name]",
+    child_name:   ex.childName  ?? "[Child Name]",
+    age:          ex.childAge   ?? "[Age]",
+    section_name: ageSection
+      ? (lang === "fr" ? ageSection.nameFr    : ageSection.nameEn)
+      : "[Section]",
+    age_range: ageSection
+      ? (lang === "fr" ? ageSection.ageRangeFr : ageSection.ageRangeEn)
+      : "[Age Range]",
+    campus_name:  campusName,
     date_time_1: "[DATE 1]",
     date_time_2: "[DATE 2]",
     date_time_3: "[DATE 3]",
   };
 
   const get = (part: string) => fillVars(getPart(templates, part, lang), vars);
-
   const parts: string[] = [];
 
   if (campus === "bangkok") {
     parts.push(get("greeting"));
-    if (section) parts.push(get("childWelcome"));
+    if (ageSection) parts.push(get("childWelcome"));
     parts.push(get("programDescription"));
     parts.push(get("internationalOption"));
-    if (campusCode === "SATHORN") {
+    // Which campus description to include is driven by the DIRECTOR's section
+    if (dirSec === "french") {
       parts.push(get("sathornDescription"));
-    } else if (campusCode === "SUKHUMVIT") {
+    } else if (dirSec === "international") {
       parts.push(get("sukhumvitDescription"));
     } else {
       parts.push(get("locationChoice"));
@@ -120,7 +123,7 @@ function assembleDraft(
 
   } else if (campus === "hanoi") {
     parts.push(get("greeting"));
-    if (section) parts.push(get("childWelcome"));
+    if (ageSection) parts.push(get("childWelcome"));
     parts.push(get("programDescription"));
     parts.push(get("visitOffer"));
     parts.push(get("attachments"));
@@ -131,12 +134,12 @@ function assembleDraft(
   } else {
     // phnomPenh
     parts.push(get("greeting"));
-    if (section) parts.push(get("childWelcome"));
+    if (ageSection) parts.push(get("childWelcome"));
     parts.push(get("aefeHighlight"));
     if (isTooYoung) parts.push(get("under18Months"));
     parts.push(get("visitOffer"));
     parts.push(get("attachments"));
-    parts.push(get("closing")); // PP closing already contains the full signature
+    parts.push(get("closing")); // PP closing already contains the director's full signature
   }
 
   return parts.filter(Boolean).join("\n\n");
@@ -158,47 +161,61 @@ export async function runPipeline(emailId: string, env: Env): Promise<void> {
 
     const ex = await extractEmailInfo(email.subject, email.rawText, env.GEMINI_API_KEY);
 
-    const campusCode = mapToCampusCode(ex);
+    const location   = cityToLocation(ex.city);
+    const section    = cursusToSection(ex.cursus);
     const sectionCode = mapAgeToSection(ex.ageInMonths);
-    const directorId = routeToDirector(campusCode, ex.detectedLanguage);
 
-    // Upsert extraction (handle regenerate case)
+    // Informational campus code (what the parent stated — stored but not used for routing)
+    const detectedCampus = `${ex.city}_${ex.campusPreference}`.toUpperCase();
+
+    // ── Find director by location + section ───────────────────────────────────
+    const director =
+      (await prisma.director.findFirst({
+        where: { location, section: { in: [section, "both"] } },
+      })) ??
+      (await prisma.director.findFirst({ where: { id: "DEFAULT" } })) ??
+      (await prisma.director.findFirst());
+
+    if (!director) throw new Error("No director found — please configure at least one director");
+
+    // Upsert extraction
     await prisma.extractedInfo.upsert({
       where: { emailId },
       create: {
         emailId,
         parentName:       ex.parentName,
+        parentEmail:      ex.parentEmail,
+        cursus:           ex.cursus,
         childName:        ex.childName,
         childAge:         ex.childAge,
         detectedLanguage: ex.detectedLanguage,
-        detectedCampus:   campusCode,
+        detectedCampus,
         sectionCode,
       },
       update: {
         parentName:       ex.parentName,
+        parentEmail:      ex.parentEmail,
+        cursus:           ex.cursus,
         childName:        ex.childName,
         childAge:         ex.childAge,
         detectedLanguage: ex.detectedLanguage,
-        detectedCampus:   campusCode,
+        detectedCampus,
         sectionCode,
       },
     });
 
-    const [director, section, templates] = await Promise.all([
-      prisma.director.findUnique({ where: { id: directorId } }),
+    const [ageSection, templates] = await Promise.all([
       sectionCode ? prisma.section.findUnique({ where: { code: sectionCode } }) : null,
-      prisma.template.findMany({ where: { campus: CAMPUS_REGION[directorId] ?? "bangkok" } }),
+      prisma.template.findMany({ where: { campus: director.location } }),
     ]);
 
-    if (!director) throw new Error(`Director not found: ${directorId}`);
+    const campusName = campusNameFromPref(ex.city, ex.campusPreference);
+    const draftText  = assembleDraft(templates, ageSection, director, ex, campusName);
 
-    const draftText = assembleDraft(templates, section, director, ex, campusCode);
-
-    // Upsert draft (handle regenerate case)
     await prisma.emailDraft.upsert({
       where: { emailId },
-      create: { emailId, directorCampusCode: directorId, draftText },
-      update: { directorCampusCode: directorId, draftText, editedAt: null, sentAt: null },
+      create: { emailId, directorCampusCode: director.id, draftText },
+      update: { directorCampusCode: director.id, draftText, editedAt: null, sentAt: null },
     });
 
     await prisma.incomingEmail.update({
@@ -208,8 +225,7 @@ export async function runPipeline(emailId: string, env: Env): Promise<void> {
   } catch (error) {
     console.error(`Pipeline failed for email ${emailId}:`, error);
     try {
-      const prismaRetry = createPrismaClient(env.DB);
-      await prismaRetry.incomingEmail.update({
+      await createPrismaClient(env.DB).incomingEmail.update({
         where: { id: emailId },
         data: {
           status: "error",
